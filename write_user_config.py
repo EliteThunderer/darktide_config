@@ -60,7 +60,7 @@ def extract_subheaders(extracted_lines):
 
         bracket_count -= line.count("}")
 
-    return mod_names
+    return sorted(list(mod_names), key=str.lower)
 
 def write_new_shareable_settings_file(external_settings_file, target_header):
     config_folder, export_destination_folder = get_game_directory_and_save_path()
