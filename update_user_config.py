@@ -248,7 +248,7 @@ def insert_custom_settings(config_folder, config_path, external_settings_file, t
         block_start_idx = -1
         block_end_idx = -1
         bracket_count = 0
-        header_indent = "    "
+        header_indent = ""
         prefix_lines = []
         suffix_lines = []
 
@@ -270,13 +270,19 @@ def insert_custom_settings(config_folder, config_path, external_settings_file, t
                     suffix_lines.extend(full_lines[idx+1:])
                     break
 
-        if block_start_idx == -1 or block_end_idx == -1:
-            print(style_text(f"[-] Error: Could not locate the '{target_header}' block in your config file.", "FAIL"))
+        if block_start_idx == -1:
+            print(style_text(f"[!] '{target_header}' not found. Inserting new block section...", "WARNING"))
+            if prefix_lines and not prefix_lines[-1].endswith('\n'):
+                prefix_lines[-1] += "\n"
+            block_contents = []
+            header_indent = ""
+        elif block_end_idx == -1:
+            print(style_text(f"[-] Error: Corrupted bracket syntax detected inside existing '{target_header}' config block.", "FAIL"))
             return
-        
-        block_contents = full_lines[block_start_idx+1 : block_end_idx]
-        child_indent = header_indent + "    "
+        else:
+            block_contents = full_lines[block_start_idx+1 : block_end_idx]
 
+        child_indent = header_indent + "    "
         existing_block_map = {}
         non_setting_lines = []
         
@@ -286,46 +292,52 @@ def insert_custom_settings(config_folder, config_path, external_settings_file, t
         pattern = re.compile(r'^\s*([a-zA-Z0-9_\-]+)\s*=')
 
         for line in block_contents:
-            u_bracket += line.count("{")
-            if u_bracket == 1 and u_mod is None:
-                m_match = pattern.match(line)
+            clean_line = line.split('--', 1)[0]
+
+            net_brackets = clean_line.count("{") - clean_line.count("}")
+            u_bracket += net_brackets
+
+            if u_mod is None:
+                m_match = pattern.match(clean_line)
                 if m_match:
                     found_key = m_match.group(1)
-                    if "{" in line:
+                    if "{" in clean_line and u_bracket > 0:
                         u_mod = found_key
                         u_capture = [line.strip()]
                     else:
-                        val_part = line.split("=", 1)[1].strip().rstrip(',')
+                        split_parts = clean_line.split("=", 1)
+                        val_part = split_parts[1].strip().rstrip(',') if len(split_parts) > 1 else ""
                         existing_block_map[found_key] = val_part
+
                 else:
                     if line.strip():
                         non_setting_lines.append(line)
-
-            elif u_mod is not None:
+            else:
                 u_capture.append(line.strip())
-                if u_bracket == 1 and "}" in line:
+                if u_bracket == 0 or (u_bracket == 1 and net_brackets < 0 and "}" in clean_line):
                     existing_block_map[u_mod] = "\n".join(u_capture)
                     u_mod = None
-            else:
-                if line.strip():
-                    non_setting_lines.append(line)
-
-            u_bracket -= line.count("}")
 
         for key, val in incoming_settings.items():
-            existing_block_map[key] = val
+            if val.lstrip().startswith(f"{key}") and "=" in val:
+                existing_block_map[key] = val
+            else:
+                existing_block_map[key] = f"{key} = {val}"
 
         rebuilt_inner_lines = []
         for comment_line in non_setting_lines:
             rebuilt_inner_lines.append(comment_line.rstrip())
 
         for key in sorted(existing_block_map.keys()):
+            raw_value = existing_block_map[key]
             indented_val = []
-            for i, chunk in enumerate(existing_block_map[key].splitlines()):
+
+            for i, chunk in enumerate(raw_value.splitlines()):
                 if i == 0:
-                    indented_val.append(chunk)
+                    indented_val.append(chunk.lstrip())
                 else:
                     indented_val.append(f"{child_indent}    {chunk}")
+                    
             rebuilt_inner_lines.append(f"{child_indent}{'\n'.join(indented_val)},")
 
         new_block_string = f"{header_indent}{target_header} = {{\n" + "\n".join(rebuilt_inner_lines) + f"\n{header_indent}}}\n"
