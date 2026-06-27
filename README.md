@@ -1,6 +1,40 @@
-# darktide_config
-Darktide_Mod_Settings_Compiler.exe allows you to instantly compile the entirety of your mod settings from the user_settings.config and have them written as a .txt file to any folder. Darktide_Config_Updater.exe allows any user to easily write that mod_settings_config.txt file to their own user_settings.config, save a backup, and restore that backup
+# Darktide Config #
 
-Only the person distributing their mod settings will need to have the Darktide_Mod_Settings_Compiler.exe. You simply save the program where you want it, run the program, tell it where to store a cache pointer file, and tell it where you want the mod_settings_config.txt file saved so you can easily add it to your shared folder.
+The Darktide_Config_Updater.exe will be found in the shared modpack folder along
+with a file called mod_settings_config.txt.
 
-The Darktide_Config_Updater.exe, on the other hand, will go in the shared folder for everyone who has access to the modpack. From there, they can interact with the .exe to run the updater, which will read directly from the mod_settings_config.txt that was made by the owner. Upon first opening the console, it will auto-search for the mod_settings_config.txt. If it finds it, the menu will load, otherwise it will launch a file browser for you to manually select the .txt file, after which it will load the menu. On loading, the menu will contain three prompts: Apply Custom Settings, Restore Config From Existing Backup, and Exit. You enter a simple number designation for which task you want to perform, it will run the script for it, then take you back to the menu. You can leave the window open while you launch the game to populate the mod settings and see if they're what you want or if something breaks. If you're satisfied, you can go back to the console and use the exit command. If something is wrong, you can use the restore command to roll the user_settings.config back to the previous version and then exit.
+Open the '.exe' to run the updater and it will search for both your local Darktide
+folder to find the user_settings.config file the game references, and the
+mod_settings_config.txt to read and inject the specific mod settings you want into
+your local file. If it can't find one of these, it will request that you manually
+select where they are located. Once that's complete, the console will open to the
+main menu where you can select your actions.
+
+To add NEW SETTINGS or UPDATE PREVIOUS SETTINGS, simply type "1" into the menu and
+hit Enter to run this. This will take you to the mod selection screen where you can
+scroll through the mods listed in the mod_settings_config.txt created by Mister E. 
+On this screen, all mods will initially be pre-selected.
+
+    If you want the SETTINGS FOR EVERY MOD available in the pack, simply press Enter 
+    again. This will insert all of Mister E's settings for each selected mod into your
+    user_settings.config file and create a '.bak' backup file in case something goes
+    wrong or you decide you don't want the imported settings. *Don't delete* this unless
+    you are *sure* you don't want to return to your previous config settings. After the
+    task is run, press Enter to return to the menu, then type "3" to safely close the
+    console.
+
+    If you there are any SPECIFIC MODS you don't want to use, go through the list and
+    deselect those you wish to exclude, then press Enter to import them. This will
+    insert all of Mister E's settings for each selected mod into your
+    user_settings.config file and create a '.bak' backup file in case something goes
+    wrong or you decide you don't want the imported settings. *Don't delete* this unless
+    you are *sure* you don't want to return to your previous config settings. After the
+    task is run, press Enter to return to the menu, then type "3" to safely close the
+    console.
+
+To RESTORE YOUR PREVIOUS CONFIG and mod settings, simply type "2" into the menu and
+hit Enter to run this. This will go through and restore your user_settings.config
+using the most recent backup file found in the 'Darktide' folder, then it will clean
+the '.bak' file to clear extra clutter in your folder. From here, press Enter to
+return to the menu, at which point you can either choose to select different mods
+by typing "1", or you can type "3" to safely close the console.
