@@ -1,5 +1,6 @@
 import os
 import sys
+import sjson
 import shutil
 from datetime import datetime
 import tkinter as tk
@@ -48,6 +49,7 @@ def find_external_settings_file(filename="mod_settings_config.txt"):
     user_profile = os.environ.get("USERPROFILE")
     if user_profile:
         search_locations = [
+            ".",
             os.path.join(user_profile, "Downloads"),
             os.path.join(user_profile, "Desktop"),
             os.getcwd()
@@ -177,43 +179,17 @@ def interactive_mod_selector(mod_list):
     sys.stdout.flush()
     return [mod_list[i] for i in selected_indices]
 
-def parse_selected_mod_blocks(external_settings_file, selected_mods):
-    """Tracks bracket counts to extract full multi-line config dictionary blocks for only the mods selected by user."""
+def read_external_settings_file(external_settings_file, selected_mods):
+    """Loads an SJSON file for merging with current user settings."""
     incoming_settings = {}
     if not os.path.exists(external_settings_file):
         return incoming_settings
     
-    with open(external_settings_file, "r", encoding="utf-8", errors="ignore") as f:
+    # print(external_settings_file)
+    with open(external_settings_file, "r", encoding="utf-8") as f:
         lines = f.readlines()
-
-    pattern = re.compile(r'^\s*([a-zA-Z0-9_\-]+)\s*=')
-    bracket_count = 0
-    capture_lines = []
-    current_mod = None
-    
-    for line in lines:
-        if line.strip().startswith("--"):
-            continue
-
-        bracket_count += line.count("{")
-
-        if bracket_count == 2 and "{" in line and current_mod is None:
-            match = pattern.match(line)
-            if match:
-                found_mod = match.group(1)
-                if found_mod in selected_mods:
-                    current_mod = found_mod
-                    capture_lines = [line]
-                else:
-                    current_mod = None
-
-        elif current_mod is not None:
-            capture_lines.append(line)
-            if bracket_count == 1 and "}" in line:
-                incoming_settings[current_mod] = "".join(capture_lines).strip().rstrip(',')
-                current_mod = None
-
-        bracket_count -= line.count("}")
+        cleaned = "".join(line for line in lines if not line.lstrip().startswith("--"))
+        incoming_settings = sjson.loads(cleaned)
 
     return incoming_settings
 
@@ -233,123 +209,25 @@ def insert_custom_settings(config_folder, config_path, external_settings_file, t
         return
     
     print(style_text(f"\n[+] Extracting config data blocks for {len(chosen_mods)} chosen mod entries...", "CYAN"))
-    incoming_settings = parse_selected_mod_blocks(external_settings_file, chosen_mods)
+    incoming_settings = read_external_settings_file(external_settings_file, chosen_mods)
 
-    try:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_filename = f"user_settings_{timestamp}.bak"
-        backup_path = os.path.join(config_folder, backup_filename)
-        shutil.copy2(config_path, backup_path)
-        print(style_text(f"\n[+] Backup created safely as: " + backup_filename, "GREEN", "BOLD"))
 
-        with open(config_path, 'r', encoding='utf-8', errors='ignore') as config_file:
-            full_lines = config_file.readlines()
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"user_settings_{timestamp}.bak"
+    backup_path = os.path.join(config_folder, backup_filename)
+    shutil.copy2(config_path, backup_path)
+    print(style_text(f"\n[+] Backup created safely as: " + backup_filename, "GREEN", "BOLD"))
+    
+    with open(config_path, "r", encoding="utf-8") as f:
+        original_settings = sjson.loads(f.read())
+        updated_settings = original_settings
+        updated_settings["mods_settings"] = incoming_settings
+    
 
-        block_start_idx = -1
-        block_end_idx = -1
-        bracket_count = 0
-        header_indent = ""
-        prefix_lines = []
-        suffix_lines = []
+    with open(config_path, "w", encoding="utf-8") as config_file:
+        config_file.write(sjson.dumps(updated_settings, indent="\t"))
 
-        for idx, line in enumerate(full_lines):
-            if block_start_idx == -1:
-                if f"{target_header} =" in line or f"{target_header}=" in line:
-                    block_start_idx = idx
-                    match_indent = re.match(r'^([ \t]*)', line)
-                    header_indent = match_indent.group(1) if match_indent else ""
-                    bracket_count += line.count("{")
-                    bracket_count -= line.count("}")
-                else:
-                    prefix_lines.append(line)
-            else:
-                bracket_count += line.count("{")
-                bracket_count -= line.count("}")
-                if bracket_count == 0:
-                    block_end_idx = idx
-                    suffix_lines.extend(full_lines[idx+1:])
-                    break
-
-        if block_start_idx == -1:
-            print(style_text(f"[!] '{target_header}' not found. Inserting new block section...", "WARNING"))
-            if prefix_lines and not prefix_lines[-1].endswith('\n'):
-                prefix_lines[-1] += "\n"
-            block_contents = []
-            header_indent = ""
-        elif block_end_idx == -1:
-            print(style_text(f"[-] Error: Corrupted bracket syntax detected inside existing '{target_header}' config block.", "FAIL"))
-            return
-        else:
-            block_contents = full_lines[block_start_idx+1 : block_end_idx]
-
-        child_indent = header_indent + "    "
-        existing_block_map = {}
-        non_setting_lines = []
-        
-        u_bracket = 0
-        u_capture = []
-        u_mod = None
-        pattern = re.compile(r'^\s*([a-zA-Z0-9_\-]+)\s*=')
-
-        for line in block_contents:
-            clean_line = line.split('--', 1)[0]
-
-            net_brackets = clean_line.count("{") - clean_line.count("}")
-            u_bracket += net_brackets
-
-            if u_mod is None:
-                m_match = pattern.match(clean_line)
-                if m_match:
-                    found_key = m_match.group(1)
-                    if "{" in clean_line and u_bracket > 0:
-                        u_mod = found_key
-                        u_capture = [line.strip()]
-                    else:
-                        split_parts = clean_line.split("=", 1)
-                        val_part = split_parts[1].strip().rstrip(',') if len(split_parts) > 1 else ""
-                        existing_block_map[found_key] = val_part
-
-                else:
-                    if line.strip():
-                        non_setting_lines.append(line)
-            else:
-                u_capture.append(line.strip())
-                if u_bracket == 0 or (u_bracket == 1 and net_brackets < 0 and "}" in clean_line):
-                    existing_block_map[u_mod] = "\n".join(u_capture)
-                    u_mod = None
-
-        for key, val in incoming_settings.items():
-            if val.lstrip().startswith(f"{key}") and "=" in val:
-                existing_block_map[key] = val
-            else:
-                existing_block_map[key] = f"{key} = {val}"
-
-        rebuilt_inner_lines = []
-        for comment_line in non_setting_lines:
-            rebuilt_inner_lines.append(comment_line.rstrip())
-
-        for key in sorted(existing_block_map.keys()):
-            raw_value = existing_block_map[key]
-            indented_val = []
-
-            for i, chunk in enumerate(raw_value.splitlines()):
-                if i == 0:
-                    indented_val.append(chunk.lstrip())
-                else:
-                    indented_val.append(f"{child_indent}    {chunk}")
-                    
-            rebuilt_inner_lines.append(f"{child_indent}{'\n'.join(indented_val)},")
-
-        new_block_string = f"{header_indent}{target_header} = {{\n" + "\n".join(rebuilt_inner_lines) + f"\n{header_indent}}}\n"
-        updated_full_text = "".join(prefix_lines) + new_block_string + "".join(suffix_lines)
-
-        with open(config_path, "w", encoding="utf-8") as config_file:
-            config_file.write(updated_full_text)
-
-        print(style_text(f"[+] Successfully merged your selected mods cleanly into '{target_header}' block layout.", "GREEN"))
-        
-    except Exception as e:
-        print(style_text(f"[-] An error occurred during the backup or subsequent patch: {e}", "FAIL"))
+    print(style_text(f"[+] Successfully merged your selected mods cleanly into '{target_header}' block layout.", "GREEN"))
 
 def restore_from_backup(config_folder, config_path):
     try:
