@@ -1,2 +1,3 @@
 .venv/
 *.config
+mod_settings_config.txt
