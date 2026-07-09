@@ -23,13 +23,18 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Build exe
+      - name: Build Updater
         run: PyInstaller --onefile --console --name="Darktide_Config_Updater" update_user_config.py --icon="Hadron_Toes.ico"
+
+      - name: Build Compiler
+        run: PyInstaller --onefile --console --name="Darktide_Mod_Settings_Compiler" write_user_config.py --icon="Hadron_Toes.ico"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/Darktide_Config_Updater.exe
+          files: |
+            dist/Darktide_Config_Updater.exe
+            dist/Darktide_Mod_Settings_Compiler.exe
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
         env:
