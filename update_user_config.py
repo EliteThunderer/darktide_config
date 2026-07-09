@@ -37,13 +37,6 @@ def clear_screen():
     sys.stdout.write("\033[H\033[2J")
     sys.stdout.flush()
 
-#def get_resource_path(relative_path):
-    #try:
-        #base_path = sys._MEIPASS
-    #except AttributeError:
-        #base_path = os.path.abspath(".")
-    #return os.path.join(base_path, relative_path)
-
 def find_external_settings_file(filename="mod_settings_config.txt"):
     user_profile = os.environ.get("USERPROFILE")
     if user_profile:
