@@ -183,8 +183,12 @@ def read_external_settings_file(external_settings_file, selected_mods):
         lines = f.readlines()
         cleaned = "".join(line for line in lines if not line.lstrip().startswith("--"))
         incoming_settings = sjson.loads(cleaned)
+    
+    # settings_to_return = {}
+    # for each mod in selected_mods:
+    #   add incoming settings['mod'] to settings_to_return 
 
-    return incoming_settings
+    return incoming_settings # replace this with settings_to_return
 
 def insert_custom_settings(config_folder, config_path, external_settings_file, target_header="mods_settings"):
     if not os.path.exists(external_settings_file):
