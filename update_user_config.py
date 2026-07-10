@@ -214,7 +214,9 @@ def insert_custom_settings(config_folder, config_path, external_settings_file, t
     with open(config_path, "r", encoding="utf-8") as f:
         original_settings = sjson.loads(f.read())
         updated_settings = original_settings
-        updated_settings["mods_settings"] = incoming_settings
+        updated_settings.setdefault("mods_settings", {})
+        for key, value in incoming_settings.items():
+            updated_settings["mods_settings"][key] = value
     
 
     with open(config_path, "w", encoding="utf-8") as config_file:
@@ -253,7 +255,9 @@ def main():
 
     appdata_path = os.environ.get('APPDATA')
     if not appdata_path:
-        print(style_text("Error: Could not locate the AppData directory.", "FAIL"))
+        appdata_path = filedialog.askdirectory(
+                title="Select your appdata folder."
+            )
         return
 
     config_folder = os.path.join(appdata_path, "Fatshark", "Darktide")
@@ -265,7 +269,6 @@ def main():
         config_folder = os.path.join(appdata_path, "Fatshark", "MicrosoftStore", "Darktide")
         config_path = os.path.join(config_folder, "user_settings.config")
         if not os.path.exists(config_path):
-            print(style_text(f"Error: Game config file not found in expected APPDATA folders. Please select it manually...", "FAIL"))
             root2 = tk.Tk()
             root2.withdraw()
             root2.attributes("-topmost", True)
@@ -275,10 +278,6 @@ def main():
                 filetypes=[("Config Files", "*.config"), ("All Files", "*.*")]
             )
             return os.path.abspath(chosen_path2) if chosen_path2 else None
-            # input("\nPress Enter to exit...")
-            # print(style_text("\nGoodbye, varlet.", "FAIL"))
-            # time.sleep(1.0)
-            # return
     
     if not external_settings_file or not os.path.exists(external_settings_file):
         print(style_text(f"Error: Mod config text file not found anywhere.", "FAIL"))
