@@ -172,7 +172,7 @@ def interactive_mod_selector(mod_list):
     sys.stdout.flush()
     return [mod_list[i] for i in selected_indices]
 
-def read_external_settings_file(external_settings_file, selected_mods):
+def read_external_settings_file(external_settings_file, selected_mods: list):
     """Loads an SJSON file for merging with current user settings."""
     incoming_settings = {}
     if not os.path.exists(external_settings_file):
@@ -184,11 +184,11 @@ def read_external_settings_file(external_settings_file, selected_mods):
         cleaned = "".join(line for line in lines if not line.lstrip().startswith("--"))
         incoming_settings = sjson.loads(cleaned)
     
-    # settings_to_return = {}
-    # for each mod in selected_mods:
-    #   add incoming settings['mod'] to settings_to_return 
+    settings_to_return = {}
+    for mod in selected_mods:
+        settings_to_return[mod] = incoming_settings.get(mod, {})
 
-    return incoming_settings # replace this with settings_to_return
+    return settings_to_return
 
 def insert_custom_settings(config_folder, config_path, external_settings_file, target_header="mods_settings"):
     if not os.path.exists(external_settings_file):
