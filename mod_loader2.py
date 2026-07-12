@@ -1,8 +1,6 @@
 import os
 import sys
 import time
-import tkinter as tk
-from tkinter import filedialog
 
 def prompt_for_path_terminal():
     """Fallback text prompt if GUI packages are missing or fail."""
@@ -37,7 +35,7 @@ def prompt_for_path_gui():
         return chosen_path
     except (ImportError, Exception):
         print("\nGraphical window tookit not available or failed to load.")
-        return prompt_for_path_terminal
+        return prompt_for_path_terminal()
     
 def load_mods(game_dir):
     mods_dir = os.path.join(game_dir, "mods")
